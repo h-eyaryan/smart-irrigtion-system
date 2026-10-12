@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaSmart IoT - Precision Irrigation, AI Vision & Neural Intelligence</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-black text-slate-100 antialiased min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+  <script>
+    // One-time migration: clear the auto-set session from old code version
+    // so the app always starts on the login screen going forward.
+    // Only clears if it was set as the default farmer (user_farmer_101).
+    try {
+      const stored = localStorage.getItem('aqua_smart_active_user_v2');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u && u.id === 'user_farmer_101') {
+          // Check if this was auto-set (no explicit login) by seeing if it
+          // originated from an old auto-seeded session.
+          const flag = localStorage.getItem('aqua_smart_explicit_login');
+          if (!flag) {
+            localStorage.removeItem('aqua_smart_active_user_v2');
+          }
+        }
+      }
+    } catch(e) {}
+  </script>
+
+  <!-- ========================================== -->
+  <!-- AUTHENTICATION OVERLAY (LOGIN / REGISTER) -->
+  <!-- ========================================== -->
+  <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+    
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="obsidian-card rounded-3xl shadow-2xl border border-slate-800 max-w-md w-full p-8 relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+      
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg glow-emerald">
+          🌱
+        </div>
+        <div>
+          <h2 class="text-2xl font-black text-white tracking-tight">AquaSmart IoT</h2>
+          <p class="text-xs text-emerald-400 font-semibold">AI Neural Irrigation & Diagnostics</p>
+        </div>
+      </div>
+
+      <h3 class="text-base font-bold text-white mb-1">Sign In to Platform</h3>
+      <p class="text-xs text-slate-400 mb-6">Enter your registered email and password to access the system.</p>
+
+      <form id="login-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1" for="login-email">Email Address</label>
+          <input 
+            type="email" 
+            id="login-email" 
+            required 
+            placeholder="farmer@farm.com"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1" for="login-password">Password</label>
+          <input 
+            type="password" 
+            id="login-password" 
+            required 
+            placeholder="••••••••"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+        </div>
+
+        <div class="flex items-center justify-between text-xs">
+          <label class="flex items-center gap-2 text-slate-400 cursor-pointer">
+            <input type="checkbox" id="login-remember" checked class="rounded bg-slate-900 border-slate-700 text-emerald-600" />
+            <span>Remember me</span>
+          </label>
+          <a href="#" class="text-emerald-400 hover:underline font-semibold text-[11px]">Forgot password?</a>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg glow-emerald transition text-xs">
+          Sign In
+        </button>
+      </form>
+
+      <div class="mt-4 text-center text-xs text-slate-400">
+        Don't have an account? 
+        <a href="#" id="switch-to-register" class="text-emerald-400 font-bold hover:underline">Register New Account</a>
+      </div>
+
+      <!-- Direct 1-Click Role Login Buttons -->
+      <div class="mt-5 pt-4 border-t border-slate-900">
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fast Access by Role:</span>
+          <span class="text-[10px] text-emerald-400 font-semibold">1-Click Sign In</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <!-- Farmer Button -->
+          <button 
+            type="button" 
+            id="demo-farmer-btn"
+            class="p-2.5 rounded-2xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/60 hover:border-emerald-500 text-center transition group flex flex-col items-center justify-center shadow-xs cursor-pointer">
+            <span class="text-xl mb-1 group-hover:scale-110 transition-transform">👨‍🌾</span>
+            <span class="text-xs font-bold text-emerald-300">Farmer</span>
+            <span class="text-[9px] text-slate-400">John Miller</span>
+          </button>
+
+          <!-- Technician Button -->
+          <button 
+            type="button" 
+            id="demo-tech-btn"
+            class="p-2.5 rounded-2xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/60 hover:border-amber-500 text-center transition group flex flex-col items-center justify-center shadow-xs cursor-pointer">
+            <span class="text-xl mb-1 group-hover:scale-110 transition-transform">🔧</span>
+            <span class="text-xs font-bold text-amber-300">Technician</span>
+            <span class="text-[9px] text-slate-400">Alex Vance</span>
+          </button>
+
+          <!-- Admin Button -->
+          <button 
+            type="button" 
+            id="demo-admin-btn"
+            class="p-2.5 rounded-2xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/60 hover:border-purple-500 text-center transition group flex flex-col items-center justify-center shadow-xs cursor-pointer">
+            <span class="text-xl mb-1 group-hover:scale-110 transition-transform">👑</span>
+            <span class="text-xs font-bold text-purple-300">Admin</span>
+            <span class="text-[9px] text-slate-400">Sarah Connor</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTRATION MODAL -->
+    <div id="register-modal" class="obsidian-card rounded-3xl shadow-2xl border border-slate-800 max-w-lg w-full p-8 relative overflow-hidden hidden max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xl shadow-md glow-emerald">
+          📝
+        </div>
+        <div>
+          <h2 class="text-xl font-black text-white tracking-tight">Create Account</h2>
+          <p class="text-xs text-emerald-400 font-medium">Register Farmer, Technician, or Admin profile</p>
+        </div>
+      </div>
+
+      <form id="register-form" class="space-y-3.5">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-name">Full Name *</label>
+            <input type="text" id="reg-name" required placeholder="John Miller" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-email">Email Address *</label>
+            <input type="email" id="reg-email" required placeholder="john@myfarm.com" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-password">Password (min 6 chars) *</label>
+            <input type="password" id="reg-password" required minlength="6" placeholder="••••••••" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-role">Account Role *</label>
+            <select id="reg-role" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500">
+              <option value="farmer">👨‍🌾 Farmer (Farm Management)</option>
+              <option value="technician">🔧 Field Technician (IoT Hardware & Diagnostics)</option>
+              <option value="admin">👑 System Administrator (Network Fleet)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-farm-name">Farmstead / Hub Name</label>
+            <input type="text" id="reg-farm-name" placeholder="Sunny Valley Farm" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-location">Location / Region</label>
+            <input type="text" id="reg-location" placeholder="California, USA" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-crop">Primary Crop</label>
+            <select id="reg-crop" class="w-full px-2 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+              <option value="Tomatoes & Peppers">Tomatoes</option>
+              <option value="Sweet Corn">Corn / Maize</option>
+              <option value="Wheat & Cereals">Wheat</option>
+              <option value="Citrus & Orchard">Citrus / Orchard</option>
+              <option value="Leafy Greens">Microgreens</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-soil">Soil Type</label>
+            <select id="reg-soil" class="w-full px-2 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+              <option value="Loam Soil">Loam (Balanced)</option>
+              <option value="Sandy Loam">Sandy (High Drain)</option>
+              <option value="Clay Loam">Clay (High Retention)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-system">System Type</label>
+            <select id="reg-system" class="w-full px-2 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+              <option value="Precision Drip Line">Drip System</option>
+              <option value="Overhead Sprinklers">Sprinklers</option>
+              <option value="Micro-Misting">Micro-Misting</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1" for="reg-size">Acreage Field Size</label>
+          <input type="text" id="reg-size" placeholder="15.5 Acres" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg glow-emerald transition text-xs mt-2">
+          Complete Registration
+        </button>
+      </form>
+
+      <div class="mt-4 text-center text-xs text-slate-400">
+        Already registered? 
+        <a href="#" id="switch-to-login" class="text-emerald-400 font-bold hover:underline">Return to Login</a>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MAIN APPLICATION CONTAINER (PURE BLACK)    -->
+  <!-- ========================================== -->
+  <div id="main-app-container" class="flex-1 flex flex-col hidden bg-black">
+    
+    <!-- TOP NAVIGATION & STATUS BAR -->
+    <header class="bg-black/90 border-b border-slate-800/80 sticky top-0 z-40 backdrop-blur-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="flex items-center justify-between h-16">
+          
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xl shadow-lg glow-emerald">
+              💧
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 class="text-lg font-black text-white tracking-tight">AquaSmart IoT</h1>
+                <span class="user-role-badge px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  FARMER
+                </span>
+                <span id="header-pump-badge" class="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-900 text-slate-400 border border-slate-800">
+                  ⚪ Pump: STANDBY
+                </span>
+              </div>
+              <p class="text-xs text-slate-400">
+                <span class="user-farm-name font-semibold text-slate-200">Greenfield Eco Farm</span> • <span class="user-location text-slate-400">California</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            
+            <!-- AI Active Indicator -->
+            <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-emerald-500/30 text-xs">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="font-bold text-emerald-400">AgriBrain AI: Active</span>
+            </div>
+
+            <!-- Weather Chip -->
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+              <span id="stat-weather-cond" class="font-bold text-slate-200">☀️ Sunny</span>
+              <span class="text-slate-600">|</span>
+              <span id="stat-weather-temp" class="text-slate-400 font-semibold">28°C</span>
+            </div>
+
+            <!-- Sound Toggle -->
+            <button id="toggle-sound-btn" class="hidden sm:block px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition">
+              🔔 Sound: ON
+            </button>
+
+            <!-- User Menu -->
+            <div class="flex items-center gap-2.5 pl-2 sm:pl-3 sm:border-l border-slate-800">
+              <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs shadow-md glow-emerald">
+                👤
+              </div>
+              <div class="text-left text-xs">
+                <p class="font-bold text-white user-display-name">Farmer John</p>
+                <button id="logout-btn" class="text-rose-400 hover:text-rose-300 text-[11px] font-semibold">Sign Out</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT WRAPPER (PURE BLACK) -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28">
+
+      <!-- ============================================================== -->
+      <!-- PORTAL 1: FARMER DASHBOARD                                     -->
+      <!-- ============================================================== -->
+      <section id="portal-farmer" class="portal-section space-y-6">
+        
+        <!-- Farmer Sub-Navigation Tabs Bar -->
+        <div class="flex space-x-1 py-1 overflow-x-auto text-xs font-semibold border-b border-slate-800 pb-2">
+          <button class="nav-tab-btn px-4 py-2 rounded-xl bg-emerald-600 text-white shadow-xs transition" data-tab="dashboard">
+            📊 Overview
+          </button>
+          <button class="nav-tab-btn px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition" data-tab="ai-hub">
+            🧠 AI Intelligence & Vision
+          </button>
+          <button class="nav-tab-btn px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition" data-tab="zones">
+            💧 Zones & Valves
+          </button>
+          <button class="nav-tab-btn px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition" data-tab="analytics">
+            📈 Charts & Graphs
+          </button>
+          <button class="nav-tab-btn px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition" data-tab="history">
+            📜 Activity Logs
+          </button>
+          <button class="nav-tab-btn px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition" data-tab="settings">
+            ⚙️ Farm Settings
+          </button>
+        </div>
+
+        <!-- TAB 1.1: OVERVIEW DASHBOARD -->
+        <div id="tab-dashboard" class="tab-panel space-y-6">
+          
+          <!-- TOP 4 KPI CARDS -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <div class="obsidian-card rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Average Moisture</p>
+                <h3 id="stat-avg-moisture" class="text-3xl font-black text-emerald-400 mt-1">47%</h3>
+                <p class="text-[11px] text-emerald-500 font-medium mt-1">✅ Optimal Root Zone</p>
+              </div>
+              <div class="w-12 h-12 bg-emerald-950 border border-emerald-800 rounded-2xl flex items-center justify-center text-2xl text-emerald-400 shadow-md">
+                🌱
+              </div>
+            </div>
+
+            <div class="obsidian-card rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Active Valves</p>
+                <h3 id="stat-active-valves" class="text-3xl font-black text-cyan-400 mt-1">0 / 4</h3>
+                <p class="text-[11px] text-slate-400 font-medium mt-1">Smart Auto-Mode: Active</p>
+              </div>
+              <div class="w-12 h-12 bg-cyan-950 border border-cyan-800 rounded-2xl flex items-center justify-center text-2xl text-cyan-400 shadow-md">
+                🚿
+              </div>
+            </div>
+
+            <div class="obsidian-card rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Reservoir Level</p>
+                <h3 id="stat-tank-level" class="text-3xl font-black text-blue-400 mt-1">80.8%</h3>
+                <p class="text-[11px] text-slate-400 font-medium mt-1"><span id="reservoir-liters">4,850 L</span> available</p>
+              </div>
+              <div class="w-12 h-12 bg-blue-950 border border-blue-800 rounded-2xl flex items-center justify-center text-2xl text-blue-400 shadow-md">
+                🪣
+              </div>
+            </div>
+
+            <div class="obsidian-card rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Delivered Today</p>
+                <h3 id="stat-today-total-water" class="text-3xl font-black text-slate-100 mt-1">412 L</h3>
+                <p class="text-[11px] text-slate-400 font-medium mt-1">Daily Target: 1,200 L</p>
+              </div>
+              <div class="w-12 h-12 bg-indigo-950 border border-indigo-800 rounded-2xl flex items-center justify-center text-2xl text-indigo-400 shadow-md">
+                📊
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 1. LIVE FARM WEATHER STATION & METEOROLOGICAL HUB (FRONT PAGE) -->
+          <div class="obsidian-card rounded-3xl p-6 border border-cyan-500/30">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div class="flex items-center gap-4">
+                <div id="weather-front-icon" class="text-5xl shrink-0 p-3 bg-slate-900 rounded-2xl border border-slate-800">
+                  ☀️
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      🌦️ LIVE FARM WEATHER STATION
+                    </span>
+                    <span id="weather-front-rain-skip" class="text-xs">
+                      <span class="text-emerald-400 font-bold">🛡️ ARMED (Auto-Skip > 65%)</span>
+                    </span>
+                  </div>
+                  <h3 class="text-2xl font-black text-white mt-1 flex items-baseline gap-2">
+                    <span id="weather-front-temp">28.5°C</span>
+                    <span id="weather-front-cond" class="text-sm font-semibold text-slate-400">Sunny</span>
+                  </h3>
+                  <p id="weather-front-forecast" class="text-xs text-slate-400 mt-0.5">
+                    Clear skies through afternoon. 15% chance of late evening breeze.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Quick Weather Injections -->
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 hidden sm:inline">Simulate:</span>
+                <button id="btn-sim-rain" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-800 transition">
+                  🌧️ Rainstorm
+                </button>
+                <button id="btn-sim-heat" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-950 text-amber-300 hover:bg-amber-900 border border-amber-800 transition">
+                  🔥 Heatwave
+                </button>
+                <button id="btn-sim-sunny" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-950 text-emerald-300 hover:bg-emerald-900 border border-emerald-800 transition">
+                  ☀️ Mild Sun
+                </button>
+              </div>
+            </div>
+
+            <!-- Weather Telemetry Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4 text-center">
+              <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800/80">
+                <span class="text-[10px] text-slate-400 block">Relative Humidity</span>
+                <span id="weather-front-humidity" class="text-sm font-bold text-slate-200">48%</span>
+              </div>
+              <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800/80">
+                <span class="text-[10px] text-slate-400 block">Wind Velocity</span>
+                <span id="weather-front-wind" class="text-sm font-bold text-slate-200">11 km/h</span>
+              </div>
+              <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800/80">
+                <span class="text-[10px] text-slate-400 block">Solar Radiation</span>
+                <span id="weather-front-solar" class="text-sm font-bold text-amber-400">750 W/m²</span>
+              </div>
+              <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800/80">
+                <span class="text-[10px] text-slate-400 block">Rain Probability</span>
+                <span id="weather-front-rain-prob" class="text-sm font-bold text-cyan-400">15%</span>
+              </div>
+              <div class="p-3 bg-slate-900/80 rounded-2xl border border-slate-800/80 col-span-2 sm:col-span-1">
+                <span class="text-[10px] text-slate-400 block">ET₀ Daily Demand</span>
+                <span class="text-sm font-bold text-emerald-400">4.35 mm/d</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. SMART IRRIGATION WATER & RUNTIME CALCULATOR (FRONT PAGE) -->
+          <div class="obsidian-card rounded-3xl p-6 border border-emerald-500/30">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  🧮 SMART WATER & RUNTIME CALCULATOR
+                </span>
+                <h3 class="text-lg font-bold text-white mt-1">Crop Water Requirement & Pump Runtime Engine</h3>
+                <p class="text-xs text-slate-400">Calculate net water volume needed and calculate pump run minutes based on soil, crop coefficient (Kc), and area:</p>
+              </div>
+              <span id="calc-out-efficiency" class="px-3 py-1 rounded-xl text-xs font-bold bg-slate-900 text-emerald-400 border border-slate-800 self-start sm:self-auto">
+                92% Efficiency
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              <!-- Calculator Inputs (7 cols) -->
+              <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="calc-crop">Crop Type (Crop Factor Kc)</label>
+                  <select id="calc-crop" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500">
+                    <option value="tomato">🍅 Beefsteak Tomatoes (Kc: 1.15)</option>
+                    <option value="corn">🌽 Sweet Corn / Maize (Kc: 1.10)</option>
+                    <option value="wheat">🌾 Wheat & Cereals (Kc: 0.85)</option>
+                    <option value="citrus">🍊 Valencia Citrus (Kc: 0.70)</option>
+                    <option value="greens">🥬 Microgreens & Herbs (Kc: 0.95)</option>
+                    <option value="grapes">🍇 Vineyard Grapes (Kc: 0.65)</option>
+                    <option value="mixed">🥗 Mixed Vegetables (Kc: 1.00)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="calc-area">Field / Zone Area Size</label>
+                  <div class="flex gap-2">
+                    <input type="number" id="calc-area" value="500" min="10" step="10" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:ring-2 focus:ring-emerald-500" />
+                    <select id="calc-area-unit" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+                      <option value="sqm">m²</option>
+                      <option value="acres">Acres</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="calc-soil">Soil Texture Profile</label>
+                  <select id="calc-soil" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+                    <option value="loam">Loam Soil (Balanced Infiltration)</option>
+                    <option value="sandy">Sandy Soil (High Drainage: +20% Volume)</option>
+                    <option value="clay">Clay Soil (High Retention: -12% Volume)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="calc-emitter">Emitter Hardware System</label>
+                  <select id="calc-emitter" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+                    <option value="drip">Precision Drip Line (6.2 L/min, 92% Eff)</option>
+                    <option value="sprinkler">Overhead Sprinklers (14.5 L/min, 75% Eff)</option>
+                    <option value="misting">Ultrasonic Misting (4.5 L/min, 85% Eff)</option>
+                  </select>
+                </div>
+
+                <!-- Apply to Zone target selector -->
+                <div class="sm:col-span-2 flex items-center gap-3 pt-1">
+                  <div class="flex-1">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1" for="calc-target-zone">Transfer Calculation to Target Zone:</label>
+                    <select id="calc-target-zone" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+                      <option value="1">Zone 1: Greenhouse Alpha (Tomatoes)</option>
+                      <option value="2">Zone 2: North Acre Field (Corn)</option>
+                      <option value="3">Zone 3: South Orchard (Citrus)</option>
+                      <option value="4">Zone 4: Seedling Nursery (Greens)</option>
+                    </select>
+                  </div>
+                  <button 
+                    type="button" 
+                    id="btn-calc-apply"
+                    class="mt-4 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg glow-emerald flex items-center gap-1.5 shrink-0">
+                    <span>⚡ Apply & Start Cycle</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Calculator Output HUD (5 cols) -->
+              <div class="lg:col-span-5 bg-black/60 rounded-2xl border border-slate-800 p-4 flex flex-col justify-between">
+                <div>
+                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Calculated Irrigation Prescription</span>
+                  
+                  <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span class="text-[10px] text-slate-400 block">Daily Water Need</span>
+                      <span id="calc-out-liters" class="text-xl font-black text-cyan-400">272 L</span>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span class="text-[10px] text-slate-400 block">Optimal Runtime</span>
+                      <span id="calc-out-runtime" class="text-xl font-black text-emerald-400">22 Min</span>
+                    </div>
+                  </div>
+
+                  <div class="space-y-1.5 text-xs text-slate-300">
+                    <div class="flex justify-between py-1 border-b border-slate-800/60">
+                      <span class="text-slate-400">Monthly Utility Cost:</span>
+                      <span id="calc-out-cost" class="font-bold text-white">$12.24 / mo</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-slate-800/60">
+                      <span class="text-slate-400">Conserved vs Flood:</span>
+                      <span id="calc-out-conserved" class="font-bold text-emerald-400">114 L / day</span>
+                    </div>
+                    <div class="flex justify-between py-1">
+                      <span class="text-slate-400">Ideal Watering Window:</span>
+                      <span class="font-bold text-slate-200">05:30 AM & 06:45 PM</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 p-2 bg-emerald-950/40 rounded-xl border border-emerald-800/40 text-[11px] text-emerald-300 flex items-center gap-1.5">
+                  <span>💡</span>
+                  <span>Calculated via Penman-Monteith ETc formula with automated soil percolation correction.</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- AI BANNER PROMPT -->
+          <div class="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-cyan-950/70 rounded-2xl p-4 border border-emerald-500/30 flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🧠</span>
+              <div>
+                <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wider">AgriBrain AI Optimizer</h4>
+                <p class="text-xs text-slate-300" id="ai-prescription-text">
+                  AI advises shifting Zone 2 watering to 05:30 AM tomorrow. Low night transpiration will save ~48 Liters.
+                </p>
+              </div>
+            </div>
+            <button 
+              id="btn-adopt-ai-prescription"
+              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-sm glow-emerald">
+              Adopt AI Prescription
+            </button>
+          </div>
+
+          <!-- 3. ZONES ON THE FRONT & RESERVOIR GRID -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- LEFT 2 COLS: 4 IRRIGATION ZONES -->
+            <div class="lg:col-span-2 space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-base font-bold text-white">Field Irrigation Zones</h2>
+                  <p class="text-xs text-slate-400">Real-time capacitive soil moisture & micro-climate readings</p>
+                </div>
+                <button 
+                  id="btn-emergency-stop"
+                  class="px-3.5 py-1.5 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs">
+                  <span>🛑 Master Pump Shutoff</span>
+                </button>
+              </div>
+
+              <div id="zones-cards-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- RIGHT 1 COL: RESERVOIR TANK & SIMULATOR -->
+            <div class="space-y-6">
+              
+              <!-- TANK DISPLAY -->
+              <div class="obsidian-card rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 class="text-sm font-bold text-white">Storage Reservoir</h3>
+                    <p class="text-xs text-slate-400">Main Tank (6,000L Capacity)</p>
+                  </div>
+                  <button 
+                    id="btn-refill-tank" 
+                    class="px-2.5 py-1 text-xs font-semibold bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-800 rounded-lg transition">
+                    🔄 Refill
+                  </button>
+                </div>
+
+                <div class="water-tank-wrapper mb-4">
+                  <div id="reservoir-fluid-bar" class="water-tank-fluid" style="height: 80.8%"></div>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center text-center z-10 pointer-events-none">
+                    <span id="reservoir-percent" class="text-3xl font-black text-white drop-shadow-md">80.8%</span>
+                    <span class="text-xs font-semibold text-slate-300">Storage Level</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs border-t border-slate-800 pt-3">
+                  <div class="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px]">Line Pressure</span>
+                    <span id="reservoir-pressure" class="font-bold text-slate-200">45.2 PSI</span>
+                  </div>
+                  <div class="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block text-[10px]">Smart Water Saved</span>
+                    <span class="font-bold text-emerald-400" id="reservoir-saved">260 L</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SIMULATOR SCENARIOS -->
+              <div class="obsidian-card rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-bold text-white">IoT Scenario Simulator</h3>
+                  <div class="flex items-center gap-1.5 text-xs text-slate-400">
+                    <label for="sim-speed-select">Speed:</label>
+                    <select id="sim-speed-select" class="bg-slate-900 text-slate-200 border border-slate-800 rounded-lg px-2 py-1 text-xs font-semibold">
+                      <option value="1">1x Real</option>
+                      <option value="2">2x</option>
+                      <option value="5">5x Fast</option>
+                      <option value="10">10x Turbo</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-400 mb-3">Inject weather conditions to test automated pump reactions:</p>
+                
+                <div class="grid grid-cols-3 gap-2">
+                  <button id="btn-sim-rain" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-800 transition text-center">
+                    🌧️ Rainstorm
+                  </button>
+                  <button id="btn-sim-heat" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-amber-950 text-amber-300 hover:bg-amber-900 border border-amber-800 transition text-center">
+                    🔥 Heatwave
+                  </button>
+                  <button id="btn-sim-sunny" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-emerald-950 text-emerald-300 hover:bg-emerald-900 border border-emerald-800 transition text-center">
+                    ☀️ Mild Sun
+                  </button>
+                </div>
+              </div>
+
+              <!-- RECENT LOGS -->
+              <div class="obsidian-card rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-bold text-white">Recent Stream</h3>
+                  <span class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </div>
+                <div id="activity-logs-container" class="space-y-2"></div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- TAB 1.2: AI INTELLIGENCE & VISION -->
+        <div id="tab-ai-hub" class="tab-panel hidden space-y-6">
+          
+          <!-- AI AGRONOMY METRICS ROW -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="obsidian-card rounded-2xl p-5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Atmospheric Evapotranspiration (ET₀)</span>
+              <h3 id="ai-kpi-et0" class="text-3xl font-black text-cyan-400 mt-1">4.35 mm/d</h3>
+              <p class="text-[11px] text-slate-400 mt-1">Penman-Monteith Model</p>
+            </div>
+            <div class="obsidian-card rounded-2xl p-5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vapor Pressure Deficit (VPD)</span>
+              <h3 id="ai-kpi-vpd" class="text-3xl font-black text-emerald-400 mt-1">1.48 kPa</h3>
+              <p class="text-[11px] text-emerald-500 mt-1">Optimal Transpiration Window</p>
+            </div>
+            <div class="obsidian-card rounded-2xl p-5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">AI Efficiency Index</span>
+              <h3 id="ai-kpi-efficiency" class="text-3xl font-black text-purple-400 mt-1">94.6%</h3>
+              <p class="text-[11px] text-purple-400 mt-1">AgriBrain-v4 Neural Engine</p>
+            </div>
+          </div>
+
+          <!-- AGRI-VISION PLANT DISEASE SCANNER -->
+          <div class="obsidian-card rounded-3xl p-6 border border-emerald-500/30">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  🔬 AGRI-VISION AI NEURAL SCANNER
+                </span>
+                <h3 class="text-lg font-bold text-white mt-1">Foliar Pathology & Disease Identification</h3>
+                <p class="text-xs text-slate-400">Select a specimen below and execute a neural diagnostic scan:</p>
+              </div>
+              <button 
+                id="btn-run-ai-scan"
+                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-lg glow-emerald flex items-center gap-2">
+                <span>⚡ Run AI Neural Scan</span>
+              </button>
+            </div>
+
+            <!-- Leaf Sample Selectors -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <button data-sample-id="tomato_blight" class="ai-sample-select-btn p-3 rounded-2xl border border-emerald-500 bg-emerald-950/40 text-emerald-300 text-left transition">
+                <span class="text-xl">🍅</span>
+                <div class="text-xs font-bold text-white mt-1">Tomato Blight</div>
+                <div class="text-[10px] text-slate-400">Alternaria solani</div>
+              </button>
+              <button data-sample-id="corn_rust" class="ai-sample-select-btn p-3 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 text-left transition">
+                <span class="text-xl">🌽</span>
+                <div class="text-xs font-bold text-white mt-1">Sweet Corn Rust</div>
+                <div class="text-[10px] text-slate-400">Puccinia polysora</div>
+              </button>
+              <button data-sample-id="citrus_greening" class="ai-sample-select-btn p-3 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 text-left transition">
+                <span class="text-xl">🍊</span>
+                <div class="text-xs font-bold text-white mt-1">Citrus Greening</div>
+                <div class="text-[10px] text-slate-400">Huanglongbing</div>
+              </button>
+              <button data-sample-id="healthy_leaf" class="ai-sample-select-btn p-3 rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 text-left transition">
+                <span class="text-xl">🌿</span>
+                <div class="text-xs font-bold text-white mt-1">Healthy Leaf</div>
+                <div class="text-[10px] text-slate-400">Zero Pathogens</div>
+              </button>
+            </div>
+
+            <!-- Visual Preview & Results Split -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              <!-- Specimen Visual Scanner Window -->
+              <div id="ai-leaf-scan-box" class="rounded-2xl border border-slate-800 bg-black p-4 flex flex-col items-center justify-center relative overflow-hidden min-h-[220px]">
+                <img id="ai-preview-image" src="https://images.unsplash.com/photo-1592417817098-8f3d69106093?auto=format&fit=crop&w=400&q=80" alt="Plant Leaf Sample" class="max-h-48 w-full object-cover rounded-xl opacity-90" />
+                <div class="w-full flex justify-between items-center text-xs text-slate-400 mt-2 px-1">
+                  <span id="ai-preview-title" class="font-bold text-white">Early Blight (Alternaria solani)</span>
+                  <span id="ai-preview-crop" class="text-slate-400">Crop: Tomato</span>
+                </div>
+              </div>
+
+              <!-- AI Neural Diagnosis Card -->
+              <div id="ai-scan-results-box" class="rounded-2xl border border-slate-800 bg-slate-950 p-5 flex flex-col justify-between text-xs space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wide">Pathological Diagnosis</span>
+                    <h4 id="ai-result-disease-name" class="text-base font-bold text-emerald-400">Early Blight (Alternaria solani)</h4>
+                  </div>
+                  <div class="text-right">
+                    <span id="ai-result-confidence" class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                      97.8% Confidence
+                    </span>
+                    <div id="ai-result-severity" class="text-[10px] text-amber-400 mt-1 font-semibold">Moderate Infection</div>
+                  </div>
+                </div>
+
+                <div>
+                  <span class="text-slate-400 font-semibold block mb-0.5">Symptomology Detected:</span>
+                  <p id="ai-result-diagnosis" class="text-slate-300 leading-relaxed">
+                    Concentric dark target-board rings detected on lower foliar margins.
+                  </p>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                  <span class="text-emerald-400 font-bold block mb-1">💡 Agronomy Treatment & Irrigation Advisory:</span>
+                  <p id="ai-result-prescription" class="text-slate-300 leading-relaxed">
+                    Apply organic copper sulfate or Bacillus subtilis. CRITICAL IRRIGATION ADVICE: Avoid overhead sprinklers; switch to root drip irrigation to halt spore germination.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- AI 12-HOUR MOISTURE PREDICTION GRAPH -->
+          <div class="obsidian-card rounded-2xl p-6">
+            <h3 class="text-base font-bold text-white mb-1">AI 12-Hour Soil Moisture Forecast</h3>
+            <p class="text-xs text-slate-400 mb-4">Neural model projection: Natural Dryout vs AI-Optimized irrigation schedule</p>
+            <div class="h-64">
+              <canvas id="chart-ai-moisture-forecast"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 1.3: ZONES & VALVES -->
+        <div id="tab-zones" class="tab-panel hidden space-y-6">
+          <div class="obsidian-card rounded-2xl p-6">
+            <h2 class="text-lg font-bold text-white mb-1">Zone Emitters & Threshold Settings</h2>
+            <p class="text-xs text-slate-400 mb-6">Manage automated actuation triggers and solenoid flow states</p>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-500 uppercase text-[10px] tracking-wider">
+                    <th class="py-3 px-4">Zone & Location</th>
+                    <th class="py-3 px-4">Crop Type</th>
+                    <th class="py-3 px-4">Hardware Emitter</th>
+                    <th class="py-3 px-4">Current Moisture</th>
+                    <th class="py-3 px-4">Triggers (Min/Target)</th>
+                    <th class="py-3 px-4">Water Today</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4 text-right">Manual Action</th>
+                  </tr>
+                </thead>
+                <tbody id="zones-detailed-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 1.4: CHARTS & GRAPHS -->
+        <div id="tab-analytics" class="tab-panel hidden space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <div class="obsidian-card rounded-2xl p-6">
+              <h3 class="text-base font-bold text-white mb-1">24-Hour Soil Moisture Trend</h3>
+              <p class="text-xs text-slate-400 mb-4">Tracking soil water retention against diurnal ambient temperature</p>
+              <div class="h-72">
+                <canvas id="chart-moisture-trend"></canvas>
+              </div>
+            </div>
+
+            <div class="obsidian-card rounded-2xl p-6">
+              <h3 class="text-base font-bold text-white mb-1">Hourly Water Consumption</h3>
+              <p class="text-xs text-slate-400 mb-4">Volume in Liters delivered across all zones</p>
+              <div class="h-72">
+                <canvas id="chart-water-usage"></canvas>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-6">
+            <h3 class="text-base font-bold text-white mb-1">Zone-by-Zone Real-Time Moisture Comparison</h3>
+            <p class="text-xs text-slate-400 mb-4">Instant capacitive moisture comparison across Greenhouse, North Acre, Orchard, and Nursery</p>
+            <div class="h-64">
+              <canvas id="chart-zone-comparison"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 1.5: ACTIVITY LOGS -->
+        <div id="tab-history" class="tab-panel hidden space-y-6">
+          <div class="obsidian-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-base font-bold text-white">Historical Telemetry Logs</h2>
+                <p class="text-xs text-slate-400">Searchable log of all irrigation events, weather skips, and valve cycles</p>
+              </div>
+              <button 
+                id="btn-export-logs"
+                class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold transition flex items-center gap-1.5">
+                <span>📥 Export JSON Log</span>
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-500 uppercase text-[10px]">
+                    <th class="py-3 px-4">Timestamp</th>
+                    <th class="py-3 px-4">Source / Zone</th>
+                    <th class="py-3 px-4">Event Severity</th>
+                    <th class="py-3 px-4">Description</th>
+                    <th class="py-3 px-4">Liters</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 1.6: SETTINGS -->
+        <div id="tab-settings" class="tab-panel hidden space-y-6">
+          <div class="obsidian-card rounded-2xl p-6 max-w-2xl">
+            <h2 class="text-base font-bold text-white mb-1">Farmstead Profile & Configuration</h2>
+            <p class="text-xs text-slate-400 mb-6">Manage farm property details and soil characteristics</p>
+
+            <form id="farm-profile-form" class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="profile-name">Farmer Name</label>
+                  <input type="text" id="profile-name" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="profile-farm">Farm Name</label>
+                  <input type="text" id="profile-farm" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="profile-location">Location / Region</label>
+                  <input type="text" id="profile-location" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1" for="profile-crop">Primary Crop</label>
+                  <input type="text" id="profile-crop" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1" for="profile-soil">Soil Texture Classification</label>
+                <select id="profile-soil" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white">
+                  <option value="Loam Soil">Loam Soil (High Available Water Capacity)</option>
+                  <option value="Sandy Loam">Sandy Loam (Rapid Drainage)</option>
+                  <option value="Clay Loam">Clay Loam (Slow Infiltration)</option>
+                </select>
+              </div>
+
+              <button 
+                type="submit" 
+                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-md glow-emerald transition">
+                Save Farm Profile
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- ============================================================== -->
+      <!-- PORTAL 2: TECHNICIAN & HARDWARE PORTAL (PURE BLACK)            -->
+      <!-- ============================================================== -->
+      <section id="portal-technician" class="portal-section hidden space-y-6">
+        
+        <div class="bg-gradient-to-r from-zinc-950 via-slate-950 to-amber-950/40 rounded-3xl p-6 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                🔧 FIELD ENGINEERING HUB
+              </span>
+              <span class="text-xs text-slate-400">Firmware: v2.4.2-prod</span>
+            </div>
+            <h2 class="text-xl font-black text-white">IoT Hardware Diagnostics & Telemetry</h2>
+            <p class="text-xs text-slate-400">ESP32 microcontroller fleet health, raw sensor analog waveforms, and actuator relays</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button 
+              id="tech-btn-ota-update"
+              class="px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white transition shadow-sm flex items-center gap-1.5 glow-cyan">
+              <span>📡 Push OTA Update (v2.4.3)</span>
+            </button>
+            <button 
+              id="tech-btn-new-ticket"
+              class="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white transition shadow-sm flex items-center gap-1.5">
+              <span>➕ Log Service Ticket</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="tech-ota-container" class="obsidian-card rounded-2xl p-4 text-xs">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-white">Over-The-Air (OTA) Firmware Dispatcher</span>
+            <span id="tech-ota-status" class="text-slate-400">Fleet Ready for OTA upgrade</span>
+          </div>
+          <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+            <div id="tech-ota-progress-bar" class="bg-sky-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-bold text-white mb-3">Field Microcontroller Fleet (ESP32-WROOM-32 Nodes)</h3>
+          <div id="tech-nodes-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- DIAGNOSTIC CONSOLE & TEST RUNNER -->
+        <div class="obsidian-card rounded-2xl p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white">Hardware Actuator & Sensor Diagnostic Suite</h3>
+              <p class="text-xs text-slate-400">Run automated test routines on physical solenoids, sensors, and network links</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="tech-btn-test-solenoids" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-xs font-bold border border-slate-800 transition">
+                ⚡ Test Solenoids
+              </button>
+              <button id="tech-btn-test-sensors" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-xs font-bold border border-slate-800 transition">
+                🧪 Test ADC Sensors
+              </button>
+              <button id="tech-btn-test-echo" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-xs font-bold border border-slate-800 transition">
+                🔊 Ultrasonic Echo
+              </button>
+              <button id="tech-btn-test-mqtt" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 text-xs font-bold border border-slate-800 transition">
+                📡 Ping Gateway
+              </button>
+            </div>
+          </div>
+
+          <div id="tech-diagnostic-console" class="tech-terminal p-4 rounded-xl text-xs leading-relaxed min-h-[90px] shadow-inner">
+            <span class="text-slate-400">Terminal ready. Select a diagnostic routine above to begin automated hardware evaluation.</span>
+          </div>
+        </div>
+
+        <!-- TECHNICIAN GRAPHS SUITE (3 GRAPHS) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <div class="obsidian-card rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-bold text-white uppercase tracking-wide">Live ADC Sensor Signal Waveform</h4>
+              <span class="w-2 h-2 rounded-full bg-emerald-400 beacon-animate"></span>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">12-bit ADC raw output (0 - 4095) with noise jitter</p>
+            <div class="h-60">
+              <canvas id="chart-tech-adc"></canvas>
+            </div>
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-5">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wide mb-1">Hydraulic Pump Curve (Q vs H)</h4>
+            <p class="text-[11px] text-slate-400 mb-3">Delivery pressure (PSI) vs volumetric flow rate (L/min)</p>
+            <div class="h-60">
+              <canvas id="chart-tech-hydraulic"></canvas>
+            </div>
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-5">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wide mb-1">Power Rail Voltage Stability</h4>
+            <p class="text-[11px] text-slate-400 mb-3">12V solar accumulator vs regulated 3.3V logic rail</p>
+            <div class="h-60">
+              <canvas id="chart-tech-voltage"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- MAINTENANCE WORK ORDER / TICKETS BOARD -->
+        <div class="obsidian-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white">Field Maintenance & Hardware Fault Tickets</h3>
+              <p class="text-xs text-slate-400">Track and resolve open component issues across farm nodes</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-500 uppercase text-[10px]">
+                  <th class="py-2.5 px-3">Ticket ID</th>
+                  <th class="py-2.5 px-3">Component</th>
+                  <th class="py-2.5 px-3">Description</th>
+                  <th class="py-2.5 px-3">Priority</th>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="tech-tickets-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- ============================================================== -->
+      <!-- PORTAL 3: ADMIN PORTAL (PURE BLACK)                            -->
+      <!-- ============================================================== -->
+      <section id="portal-admin" class="portal-section hidden space-y-6">
+        
+        <div class="bg-gradient-to-r from-zinc-950 via-purple-950/40 to-indigo-950/40 rounded-3xl p-6 text-white border border-purple-900/60 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">
+                👑 ENTERPRISE NETWORK ADMINISTRATION
+              </span>
+              <span class="text-xs text-purple-300">Security Clearance: ROOT</span>
+            </div>
+            <h2 class="text-xl font-black text-white">Central Operations & Farmstead Management</h2>
+            <p class="text-xs text-slate-400">Supervise registered farms, enforce regional water policies, and inspect global analytics</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1.5 bg-purple-950/80 border border-purple-700/60 rounded-xl text-xs font-semibold">
+              Global Status: <span class="text-emerald-400 font-bold">100% HEALTHY</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div class="obsidian-card rounded-2xl p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Registered Farmsteads</p>
+            <h3 class="text-3xl font-black text-purple-400 mt-1">5 Farms</h3>
+            <p class="text-[11px] text-slate-400 font-medium mt-1">California & Oregon Network</p>
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Monitored Land</p>
+            <h3 class="text-3xl font-black text-indigo-400 mt-1">115.0 Acres</h3>
+            <p class="text-[11px] text-slate-400 font-medium mt-1">19 Precision Zones</p>
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Water Conserved (Month)</p>
+            <h3 id="admin-kpi-saved" class="text-3xl font-black text-emerald-400 mt-1">14.8 ML</h3>
+            <p class="text-[11px] text-emerald-500 font-medium mt-1">💚 41.2% Reduction vs baseline</p>
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Network Telemetry SLA</p>
+            <h3 class="text-3xl font-black text-cyan-400 mt-1">99.98%</h3>
+            <p class="text-[11px] text-cyan-400 font-medium mt-1">0 Sensor Dropout Events</p>
+          </div>
+
+        </div>
+
+        <!-- ADMIN MULTI-GRAPH SUITE -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <div class="lg:col-span-2 obsidian-card rounded-2xl p-6">
+            <h3 class="text-base font-bold text-white mb-1">7-Day Multi-Farm Water Efficiency Analysis</h3>
+            <p class="text-xs text-slate-400 mb-4">Traditional fixed timer baseline vs actual smart IoT delivery and conserved water volume</p>
+            <div class="h-72">
+              <canvas id="chart-admin-savings"></canvas>
+            </div>
+          </div>
+
+          <div class="obsidian-card rounded-2xl p-6">
+            <h3 class="text-base font-bold text-white mb-1">Crop Water Allocation</h3>
+            <p class="text-xs text-slate-400 mb-4">Volume distribution across crop classifications</p>
+            <div class="h-72">
+              <canvas id="chart-admin-crops"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- USER & FARMSTEAD MANAGEMENT TABLE -->
+        <div class="obsidian-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white">Network User & Farmstead Registry</h3>
+              <p class="text-xs text-slate-400">Manage farmer accounts, field technician credentials, and administrative permissions</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-500 uppercase text-[10px]">
+                  <th class="py-3 px-4">User & Persona</th>
+                  <th class="py-3 px-4">Email</th>
+                  <th class="py-3 px-4">Role</th>
+                  <th class="py-3 px-4">Assigned Farm / Ops Hub</th>
+                  <th class="py-3 px-4">Location</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- GLOBAL NETWORK POLICIES & DROUGHT CONTROLS -->
+        <div class="obsidian-card rounded-2xl p-6 max-w-3xl">
+          <h3 class="text-base font-bold text-white mb-1">Global Network Irrigation Policies</h3>
+          <p class="text-xs text-slate-400 mb-5">Set regional thresholds automatically synchronized to all IoT field microcontrollers</p>
+
+          <form id="admin-policy-form" class="space-y-4">
+            <div class="flex items-center justify-between p-3.5 bg-slate-900 rounded-xl border border-slate-800">
+              <div>
+                <p class="text-xs font-bold text-white">Mandatory Rain Skip Enforcement</p>
+                <p class="text-[11px] text-slate-400">Override local user preferences and halt outdoor irrigation when rain probability exceeds 65%</p>
+              </div>
+              <input type="checkbox" checked class="w-4 h-4 bg-slate-800 text-purple-600 rounded" />
+            </div>
+
+            <div class="flex items-center justify-between p-3.5 bg-slate-900 rounded-xl border border-slate-800">
+              <div>
+                <p class="text-xs font-bold text-white">State Drought Emergency Quota Protocol</p>
+                <p class="text-[11px] text-slate-400">Enforce 25% daily volumetric water reduction during regional heatwaves</p>
+              </div>
+              <input type="checkbox" class="w-4 h-4 bg-slate-800 text-purple-600 rounded" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Maximum Daily Water Allocation per Acre</label>
+              <input type="range" min="50" max="300" value="120" class="w-full text-purple-600 bg-slate-800" />
+              <div class="flex justify-between text-[11px] text-slate-400">
+                <span>50 L / Acre</span>
+                <span>Current: 120 L / Acre</span>
+                <span>300 L / Acre</span>
+              </div>
+            </div>
+
+            <button 
+              type="button" 
+              id="admin-btn-save-policy"
+              class="px-5 py-2.5 bg-purple-700 hover:bg-purple-600 text-white font-bold rounded-xl text-xs shadow-md transition">
+              Broadcast Policy Update to Nodes
+            </button>
+          </form>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- FIXED BOTTOM PORTAL NAVIGATION DOCK            -->
+    <!-- ============================================== -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-slate-800/80 shadow-[0_-10px_35px_rgba(0,0,0,0.9)]">
+      <div class="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between sm:justify-center gap-2 sm:gap-4">
+        
+        <!-- Farmer Portal Button -->
+        <button 
+          class="portal-switch-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition shadow-lg bg-emerald-600 text-white border border-emerald-500/50 glow-emerald" 
+          data-portal="farmer">
+          <span class="text-lg">👨‍🌾</span>
+          <div class="text-left">
+            <div class="leading-tight font-black text-xs">Farmer Portal</div>
+            <div class="text-[9px] opacity-80 font-normal hidden sm:block">Sensors, Weather & AI</div>
+          </div>
+        </button>
+        
+        <!-- Technician Portal Button -->
+        <button 
+          class="portal-switch-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition text-slate-400 hover:text-white bg-slate-900/90 border border-slate-800 hover:bg-slate-800" 
+          data-portal="technician">
+          <span class="text-lg">🔧</span>
+          <div class="text-left">
+            <div class="leading-tight font-black text-xs">Technician Portal</div>
+            <div class="text-[9px] opacity-80 font-normal hidden sm:block">Hardware & Diagnostics</div>
+          </div>
+        </button>
+        
+        <!-- Admin Portal Button -->
+        <button 
+          class="portal-switch-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition text-slate-400 hover:text-white bg-slate-900/90 border border-slate-800 hover:bg-slate-800" 
+          data-portal="admin">
+          <span class="text-lg">👑</span>
+          <div class="text-left">
+            <div class="leading-tight font-black text-xs">Admin Portal</div>
+            <div class="text-[9px] opacity-80 font-normal hidden sm:block">Fleet, Users & Quota</div>
+          </div>
+        </button>
+
+      </div>
+    </nav>
+
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- FLOATING AGRIBOT AI CHATBOT WIDGET (PURE BLACK)-->
+  <!-- ============================================== -->
+  
+  <button 
+    id="toggle-chat-btn" 
+    class="fixed bottom-20 right-4 sm:right-6 z-40 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-2xl flex items-center gap-2.5 transition transform hover:scale-105 group border-2 border-emerald-400 glow-emerald">
+    <span class="text-xl">🤖</span>
+    <span class="text-xs tracking-wide">AgriBot AI Assistant</span>
+    <span class="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping"></span>
+  </button>
+
+  <div 
+    id="chatbot-widget" 
+    class="fixed bottom-36 right-4 sm:right-6 z-50 w-96 max-w-[calc(100vw-3rem)] h-[520px] bg-zinc-950 rounded-3xl chat-window-shadow border border-emerald-500/30 flex flex-col overflow-hidden hidden transition-all duration-300">
+    
+    <div class="px-5 py-3.5 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white flex items-center justify-between border-b border-emerald-500/20">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-lg shadow-xs">
+          🤖
+        </div>
+        <div>
+          <h4 class="text-xs font-bold tracking-tight text-white">AgriBot AI Pro</h4>
+          <p class="text-[10px] text-emerald-400 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> AgriBrain Neural Engine
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <button 
+          id="chat-voice-toggle" 
+          class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] font-semibold text-slate-300 border border-slate-800 transition">
+          🔇 Muted
+        </button>
+        <button 
+          id="close-chat-btn" 
+          class="w-7 h-7 rounded-lg hover:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 hover:text-white transition">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <div class="px-3 py-2 bg-black border-b border-slate-900 flex items-center gap-1.5 overflow-x-auto text-[11px] whitespace-nowrap">
+      <button onclick="window.AppController.sendChatAction('AI prescription')" class="px-2.5 py-0.5 rounded-full bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 transition font-medium">
+        🧠 AI Prescription
+      </button>
+      <button onclick="window.AppController.sendChatAction('Crop disease scan')" class="px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition">
+        🔬 Disease Scan
+      </button>
+      <button onclick="window.AppController.sendChatAction('Check Soil Moisture')" class="px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition">
+        💧 Moisture
+      </button>
+      <button onclick="window.AppController.sendChatAction('Water Zone 1')" class="px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition">
+        ⚡ Water Zone 1
+      </button>
+      <button onclick="window.AppController.sendChatAction('Stop all pumps')" class="px-2.5 py-0.5 rounded-full bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 transition font-semibold">
+        🛑 Stop
+      </button>
+    </div>
+
+    <div id="chat-messages-container" class="flex-1 p-4 overflow-y-auto space-y-3 bg-black">
+      <div class="flex gap-2.5 justify-start mb-3">
+        <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm glow-emerald">
+          🤖
+        </div>
+        <div class="max-w-[85%] bg-slate-950 p-3.5 rounded-2xl rounded-tl-none border border-slate-800 text-xs text-slate-200 shadow-sm">
+          <p>Hello! 🌾 I am <strong>AgriBot AI Pro</strong>, powered by the <strong>AgriBrain-v4 Neural Engine</strong>.</p>
+          <p class="mt-1">I can analyze crop disease scans, compute Penman-Monteith evapotranspiration, forecast moisture dryout, or control physical solenoids.</p>
+          <div class="flex flex-wrap gap-1 mt-2.5">
+            <button onclick="window.AppController.sendChatAction('AI prescription')" class="px-2 py-0.5 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[11px] rounded-full transition">AI Prescription</button>
+            <button onclick="window.AppController.sendChatAction('Crop disease scan')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] rounded-full transition">Disease Scan</button>
+            <button onclick="window.AppController.sendChatAction('Check Soil Moisture')" class="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] rounded-full transition">Moisture</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-3 bg-zinc-950 border-t border-slate-900 flex items-center gap-2">
+      <input 
+        type="text" 
+        id="chat-input" 
+        placeholder="Ask AgriBot AI (e.g. AI prescription, Water Zone 1)..." 
+        class="flex-1 px-3 py-2 bg-black rounded-xl border border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white" />
+      <button 
+        id="chat-send-btn" 
+        class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm glow-emerald transition">
+        Send
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/auth.js"></script>
+  <script src="js/simulator.js"></script>
+  <script src="js/chatbot.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
